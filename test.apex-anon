@@ -1,95 +1,22 @@
-public class ChainContactsWithAccountBatch implements Database.Batchable<Account>, Database.Stateful {
-    Map<String, Schema.SObjectField> contactFieldSetMap = Schema.getGlobalDescribe().get('Contact').getDescribe().fields.getMap();
-
-    public List<Account> start(Database.BatchableContext context) {
-        return [SELECT Id, Contacts_Limit__c, (SELECT Id, accountId, Amount__c FROM Contacts) FROM Account LIMIT 50000];
-    }
-
-    public void execute(Database.BatchableContext context, List<Account> accountRecordList) {
-        List<Contact_Rule_Account_Junction__c> ruleList = [
+     Map<String, Schema.SObjectField> contactFieldSetMap = Schema.getGlobalDescribe().get('Contact').getDescribe().fields.getMap();
+ List<Contact_Rule_Account_Junction__c> ruleList = [
             SELECT Contact_Assignment_Rule__r.Operator__c, Contact_Assignment_Rule__r.Field_Value__c, 
-                Contact_Assignment_Rule__r.Field_API__c, Account__r.Id 
-            FROM Contact_Rule_Account_Junction__c
+                Contact_Assignment_Rule__r.Field_API__c, Account__c 
+            FROM Contact_Rule_Account_Junction__c 
         ];
 
-        List<Contact> contactList = [SELECT Id, Name, Amount__c FROM Contact]; //Database.query('SELECT accountId, Amount__c FROM Contact WHERE ' + getAllConditions(ruleList));
-        List<Contact> contactOnAccountToUpdate = new List<Contact>();
-        for (Account accountRecordItem : accountRecordList) {
-            Integer amountOfContactOnAccount = accountRecordItem.Contacts_Limit__c == null ? 5 : Integer.valueOf(accountRecordItem.Contacts_Limit__c);
-            List<Contact_Assignment_Rule__c> rulesForAccount = getRulesForAccount(ruleList, accountRecordItem);
+Account accountRecordItem = [SELECT Id FROM Account WHERE Id='0017F00000PJAtMQAX'];
 
-            if (rulesForAccount.isEmpty()) {
-                continue;
-            }
+List<Contact_Assignment_Rule__c> rulesForAccount = getRulesForAccount(ruleList, accountRecordItem);
 
-            for (Contact contactOnAccount : accountRecordItem.Contacts) {
-                 if (isContactMatchesRules(contactOnAccount, rulesForAccount) == false) {
-                    contactOnAccount.accountId = null;
-                    contactOnAccountToUpdate.add(contactOnAccount);
-                }
-            }
 
-            for (Contact contactItem : contactList) {
-                if (amountOfContactOnAccount == 0) {
-                    break;
-                }
-
-                if (isContactMatchesRules(contactItem, rulesForAccount) == true) {
-                    contactItem.accountId = accountRecordItem.Id;
-                    amountOfContactOnAccount--;
-                }
-            }
-        }
-        update contactOnAccountToUpdate;
-        update contactList;
-
-    }
-
-    public void finish(Database.BatchableContext context) {
-    }
-
-    // private String getAllConditions(List<Contact_Rule_Account_Junction__c> ruleList) {
-    //     String conditionString = '';
-
-    //     for (Contact_Rule_Account_Junction__c ruleItem : ruleList) {
-    //         conditionString += getCondition(ruleItem) + ' OR';
-    //     }
-
-    //     return conditionString.substring(0, conditionString.length() - 2);
-    // }
-
-    // private String getCondition(Contact_Rule_Account_Junction__c ruleItem) {
-    //     String conditionString = '';
-
-    //     conditionString += ruleItem.Contact_Assignment_Rule__r.Field_API__c
-    //     + ruleItem.Contact_Assignment_Rule__r.Operator__c
-    //     + 
-    //     (isQuotesNeed(ruleItem.Contact_Assignment_Rule__r.Field_API__c)
-    //     ? '\''+ ruleItem.Contact_Assignment_Rule__r.Field_Value__c + '\''
-    //     : ruleItem.Contact_Assignment_Rule__r.Field_Value__c);
-
-    //     return conditionString;
-    // }
-
-    // private Boolean isQuotesNeed(String fieldName) {
-    //     Schema.DisplayType type = contactFieldSetMap.get(fieldName).getDescribe().getType();
-
-    //     switch on type {
-    //         when Boolean, Integer, Long, Currency {
-    //             return false;
-    //         }
-    //         when else {
-    //             return true;
-    //         }
-    //     }
-    // }
 
     private List<Contact_Assignment_Rule__c> getRulesForAccount(List<Contact_Rule_Account_Junction__c> ruleList, Account currentAccount) {
         List<Contact_Assignment_Rule__c> rulesForCurrentAccount = new List<Contact_Assignment_Rule__c>();
         Id currentAccountId = currentAccount.Id;
 
         for (Contact_Rule_Account_Junction__c ruleItem : ruleList) {
-            if (currentAccountId == ruleItem.Account__r.Id) {
+            if (currentAccountId == ruleItem.Account__c) {
                 rulesForCurrentAccount.add(new Contact_Assignment_Rule__c(
                     Operator__c = ruleItem.Contact_Assignment_Rule__r.Operator__c,
                     Field_Value__c = ruleItem.Contact_Assignment_Rule__r.Field_Value__c, 
@@ -101,7 +28,7 @@ public class ChainContactsWithAccountBatch implements Database.Batchable<Account
         return rulesForCurrentAccount;
     }
 
-    private Boolean isContactMatchesRules(Contact contactItem, List<Contact_Assignment_Rule__c> ruleList) {
+ private Boolean isContactMatchesRules(Contact contactItem, List<Contact_Assignment_Rule__c> ruleList) {
         for (Contact_Assignment_Rule__c ruleItem : ruleList) {
             String fieldName = ruleItem.Field_API__c;
             String operator = ruleItem.Operator__c;
@@ -114,8 +41,9 @@ public class ChainContactsWithAccountBatch implements Database.Batchable<Account
         }
 
         return true;
-    }
+}
 
+    // private Boolean isValuesCompareCorrect(String )
     private Boolean isFieldMatchRule(Schema.DisplayType typeOfField, String fieldValue, Object contFieldValue, String operator) {
         switch on typeOfField {
             when Boolean {
@@ -223,4 +151,57 @@ public class ChainContactsWithAccountBatch implements Database.Batchable<Account
         }
         return false;
     }
+
+
+List<Contact> contactList = Database.query('SELECT accountId, Amount__c FROM Contact WHERE ' + getAllConditions(ruleList));
+
+
+    private String getAllConditions(List<Contact_Rule_Account_Junction__c> ruleList) {
+        String conditionString = '';
+
+        for (Contact_Rule_Account_Junction__c ruleItem : ruleList) {
+            conditionString += getCondition(ruleItem) + ' OR';
+        }
+
+        return conditionString.substring(0, conditionString.length() - 2);
+    }
+
+    private String getCondition(Contact_Rule_Account_Junction__c ruleItem) {
+        String conditionString = '';
+
+        conditionString += ruleItem.Contact_Assignment_Rule__r.Field_API__c
+        + ruleItem.Contact_Assignment_Rule__r.Operator__c
+        + 
+        (isQuotesNeed(ruleItem.Contact_Assignment_Rule__r.Field_API__c)
+        ? '\''+ ruleItem.Contact_Assignment_Rule__r.Field_Value__c + '\''
+        : ruleItem.Contact_Assignment_Rule__r.Field_Value__c);
+
+        return conditionString;
+    }
+
+        private Boolean isQuotesNeed(String fieldName) {
+        Schema.DisplayType type = contactFieldSetMap.get(fieldName).getDescribe().getType();
+
+        switch on type {
+            when Boolean, Integer, Long, Currency {
+                return false;
+            }
+            when else {
+                return true;
+            }
+        }
+    }
+
+
+List<Contact> trueContacts = new List<Contact>();
+
+for (Contact cont : contactList) {
+  System.debug(cont.get('Amount__c'));
+  if (isContactMatchesRules(cont, rulesForAccount)) {
+    trueContacts.add(cont);
+  }
 }
+
+// for (Contact trueContactItem : trueContacts) {
+//   System.debug(trueContactItem);
+// }
