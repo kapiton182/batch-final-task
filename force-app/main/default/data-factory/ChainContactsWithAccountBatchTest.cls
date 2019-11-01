@@ -78,7 +78,7 @@ public class ChainContactsWithAccountBatchTest {
 
             for (Contact contactOnAccount : accountRecordItem.Contacts) {
                 Boolean isContactOnAccountCorrect = isContactMatchesRules(contactOnAccount, rulesForAccount);
-                System.assert(isContactOnAccountCorrect, 'Check wasnt pass');
+                System.assert(isContactOnAccountCorrect, 'Checking wasnt pass');
             }
         }
     }
@@ -93,7 +93,7 @@ public class ChainContactsWithAccountBatchTest {
                     Operator__c = ruleItem.Contact_Assignment_Rule__r.Operator__c,
                     Field_Value__c = ruleItem.Contact_Assignment_Rule__r.Field_Value__c, 
                     Field_API__c = ruleItem.Contact_Assignment_Rule__r.Field_API__c
-                    ));
+                ));
             }
         }
 
