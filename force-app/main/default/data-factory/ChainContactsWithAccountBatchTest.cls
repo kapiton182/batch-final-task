@@ -58,7 +58,17 @@ public class ChainContactsWithAccountBatchTest {
 
         String allFieldsFromRules = getAllFieldsFromRules(juncAccWithRuleList);
 
-        List<Account> accountList = (List<Account>)Database.query('SELECT Id, Contacts_Limit__c, (SELECT ' + allFieldsFromRules + ' FROM Contacts) FROM Account WHERE Id IN (SELECT Account__c FROM Contact_Rule_Account_Junction__c) LIMIT 50000');
+        List<Account> accountList = (List<Account>)Database.query(
+            'SELECT Id, Contacts_Limit__c, ('
+                +'SELECT ' + getAllFieldsFromRules(juncAccWithRuleList) 
+                + ' FROM Contacts) '
+            +'FROM Account '
+            +'WHERE Id '
+            +'IN ('
+                +'SELECT Account__c '
+                +'FROM Contact_Rule_Account_Junction__c) '
+            +'LIMIT 50000'
+        );
 
 
         for (Account accountRecordItem : accountList) {
@@ -108,7 +118,9 @@ public class ChainContactsWithAccountBatchTest {
             String operator = ruleItem.Operator__c;
             String fieldValue = ruleItem.Field_Value__c;
             Object contFieldValue = contactItem.get(fieldName);
+
             Schema.DisplayType typeOfField = contactFieldSetMap.get(fieldName).getDescribe().getType();
+
             if (isFieldMatchRule(typeOfField, fieldValue, contFieldValue, operator) == false) {
                 return false;
             }
@@ -132,17 +144,6 @@ public class ChainContactsWithAccountBatchTest {
             when Boolean {
                 return Boolean.valueOf(fieldValue) == Boolean.valueOf(contFieldValue);
             }
-            when Integer {
-                if (operator == '>') {
-                    return Integer.valueOf(fieldValue) > Integer.valueOf(contFieldValue);
-                }
-                else if (operator == '=') {
-                    return Integer.valueOf(fieldValue) == Integer.valueOf(contFieldValue);
-                }
-                else if (operator == '<') {
-                    return Integer.valueOf(fieldValue) < Integer.valueOf(contFieldValue);
-                }
-            }
             when CURRENCY {
                 if (operator == '>') {
                     return Double.valueOf(fieldValue) > Double.valueOf(contFieldValue);
@@ -163,17 +164,6 @@ public class ChainContactsWithAccountBatchTest {
                 }
                 else if (operator == '<') {
                     return String.valueOf(fieldValue) < String.valueOf(contFieldValue);
-                }
-            }
-            when Double {
-                if (operator == '>') {
-                    return Double.valueOf(fieldValue) > Double.valueOf(contFieldValue);
-                }
-                else if (operator == '=') {
-                    return Double.valueOf(fieldValue) == Double.valueOf(contFieldValue);
-                }
-                else if (operator == '<') {
-                    return Double.valueOf(fieldValue) < Double.valueOf(contFieldValue);
                 }
             }
             when Date {
@@ -199,6 +189,7 @@ public class ChainContactsWithAccountBatchTest {
                 }
             }
         }
+
         return false;
     }
 }
